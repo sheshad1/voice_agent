@@ -1,0 +1,76 @@
+# Variables tab in the Sarvam builder. Input variables are filled per call by the dialer;
+# output variables are extracted from the conversation after the call using the extraction prompt.
+
+inputs:
+  - name: lead_id
+    default: ""
+    description: Internal lead id; echoed back in the CRM push to tie the call to its lead.
+  - name: lead_name
+    default: "there"
+    description: Lead's first name, used in the greeting.
+  - name: lead_city
+    default: ""
+    description: City from the lead record; confirmed on the call.
+  - name: preferred_language
+    default: Hindi
+    description: Language to open the call in.
+    allowed_values: [Hindi, English]
+
+goal: outcome = qualified_booked
+
+outputs:
+  - name: intent
+    type: enum
+    description: Whether the lead wants to become a delivery partner.
+    allowed_values: [interested, not_interested, callback]
+    extraction_prompt: >
+      interested if the caller wants to become a delivery partner, not_interested if they declined,
+      callback if they were busy or asked to be called another time. Leave empty if unclear.
+  - name: has_vehicle
+    type: enum
+    description: Whether the lead owns a bike, scooter or electric bike.
+    allowed_values: ["true", "false"]
+    extraction_prompt: >
+      true if the caller said they own a bike, scooter or electric bike, false if they said they do not.
+      Leave empty if the question was not answered.
+  - name: docs_ready
+    type: enum
+    description: Whether the lead already has their documents ready. Recorded only; it never blocks onboarding.
+    allowed_values: ["true", "false"]
+    extraction_prompt: >
+      true if the caller said their documents are ready, false if they said they are not or named a
+      missing one. Leave empty if not discussed.
+  - name: city
+    type: string
+    description: City the lead confirmed.
+    extraction_prompt: >
+      The city the caller confirmed they live or work in, in English (for example Bengaluru).
+      Leave empty if not stated.
+  - name: outcome
+    type: enum
+    description: The agent's own view of the call result; the backend recomputes the verdict.
+    allowed_values: [qualified_booked, not_qualified, not_interested, follow_up_needed]
+    extraction_prompt: >
+      qualified_booked only if the agent confirmed an onboarding slot booking during the call;
+      not_qualified if the caller has no two-wheeler or lives in an unserved city; not_interested if
+      the caller declined; otherwise follow_up_needed.
+  - name: not_qualified_reason
+    type: enum
+    description: Why the lead did not qualify.
+    allowed_values: [no_vehicle, out_of_service_area]
+    extraction_prompt: >
+      Only when outcome is not_qualified: no_vehicle or out_of_service_area. Otherwise leave empty.
+  - name: slot_id
+    type: string
+    description: Id of the booked onboarding slot.
+    extraction_prompt: The slot_id returned by the book_slot tool when the booking succeeded. Otherwise leave empty.
+  - name: callback_window
+    type: enum
+    description: Preferred time of day for a call back.
+    allowed_values: [morning, afternoon, evening]
+    extraction_prompt: The time of day the caller asked to be called back. Leave empty if none was requested.
+  - name: do_not_call
+    type: enum
+    description: Set to yes if the lead asked not to be called again.
+    allowed_values: ["true", "false"]
+    extraction_prompt: true only if the caller explicitly asked not to be called again. Otherwise false.

@@ -1,0 +1,72 @@
+# API tools for the Sarvam builder (Tools > Create tool). Use "@" in the UI to insert variables.
+# Auth: Bearer is NOT used; send the shared secret as header X-API-Key, stored via Sarvam Secrets
+# under the name rider_backend_api_key. Replace {{PUBLIC_BASE_URL}} with your tunnel or host URL.
+
+tools:
+  - name: get_slots
+    run: during_conversation
+    description: >
+      Look up open onboarding slots at city centres for a city. Call after the lead has confirmed
+      their city. Returns whether the city is served and up to 3 slots with a speakable description.
+    method: GET
+    url: "{{PUBLIC_BASE_URL}}/slots"
+    headers:
+      X-API-Key: "<secret: rider_backend_api_key>"
+    params:
+      city: "@city"
+      limit: 3
+    max_wait_seconds: 8
+    on_failure: "I'm having a small technical issue checking slots."
+    response_template: "{{message}} Slots: {{slots}}"
+    curl: >
+      curl -G "{{PUBLIC_BASE_URL}}/slots" -H "X-API-Key: $KEY" --data-urlencode "city=Bengaluru"
+
+  - name: book_slot
+    run: during_conversation
+    description: >
+      Book the onboarding slot the lead chose. Only call after intent, vehicle, documents and city
+      are captured and the lead has picked a slot_id returned by get_slots.
+    method: POST
+    url: "{{PUBLIC_BASE_URL}}/bookings"
+    headers:
+      X-API-Key: "<secret: rider_backend_api_key>"
+      Content-Type: application/json
+    body:
+      interaction_id: "@Interaction ID"
+      slot_id: "@slot_id"
+      name: "@lead_name"
+      intent: "@intent"
+      has_vehicle: "@has_vehicle"
+      docs_ready: "@docs_ready"
+      city: "@city"
+    max_wait_seconds: 10
+    on_failure: "I'm having a small technical issue booking the slot."
+    response_template: "{{message}}"
+    curl: >
+      curl -X POST "{{PUBLIC_BASE_URL}}/bookings" -H "X-API-Key: $KEY" -H "Content-Type: application/json"
+      -d '{"interaction_id":"demo-1","slot_id":1,"intent":"interested","has_vehicle":"yes","docs_ready":"yes","city":"Bengaluru"}'
+
+  - name: push_crm_outcome
+    run: on_end
+    description: Pushes the captured details and outcome to the CRM when the call ends.
+    method: POST
+    url: "{{PUBLIC_BASE_URL}}/crm/outcomes"
+    headers:
+      X-API-Key: "<secret: rider_backend_api_key>"
+      Content-Type: application/json
+    body:
+      interaction_id: "@Interaction ID"
+      lead_id: "@lead_id"
+      intent: "@intent"
+      has_vehicle: "@has_vehicle"
+      docs_ready: "@docs_ready"
+      city: "@city"
+      outcome: "@outcome"
+      not_qualified_reason: "@not_qualified_reason"
+      slot_id: "@slot_id"
+      callback_window: "@callback_window"
+      do_not_call: "@do_not_call"
+      transcript: "@Call Transcript"
+    curl: >
+      curl -X POST "{{PUBLIC_BASE_URL}}/crm/outcomes" -H "X-API-Key: $KEY" -H "Content-Type: application/json"
+      -d '{"interaction_id":"demo-1","intent":"not_interested","outcome":"not_interested"}'
